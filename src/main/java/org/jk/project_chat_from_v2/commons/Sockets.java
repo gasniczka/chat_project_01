@@ -1,8 +1,10 @@
-package org.jk.ex011_chat_v2.commons;
+package org.jk.project_chat_from_v2.commons;
 
 import java.io.IOException;
 import java.net.Socket;
 
+
+// socketem mozna przesłać i tekst i dane binarne i całe obiekty, możemy obiekt zserializowac i przesłać
 public class Sockets {
 
     private static final int MIN_PORT_NUMBER = 80;
@@ -10,6 +12,7 @@ public class Sockets {
 
     private Sockets() {
     }
+
 
     public static int parsePort(String text, int defaultPort) {
         try {
@@ -24,6 +27,8 @@ public class Sockets {
         return portNumber >= MIN_PORT_NUMBER && portNumber <= MAX_PORT_NUMBER;
     }
 
+
+    // metoda do zamykania socketu
     public static void close(Socket socket) {
         try {
             socket.close();

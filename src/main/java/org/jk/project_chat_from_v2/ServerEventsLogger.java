@@ -1,4 +1,4 @@
-package org.jk.ex011_chat_v2;
+package org.jk.project_chat_from_v2;
 
 import lombok.extern.java.Log;
 

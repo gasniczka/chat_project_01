@@ -1,4 +1,4 @@
-package org.jk.ex011_chat_v2.commons;
+package org.jk.project_chat_from_v2.commons;
 
 import lombok.extern.java.Log;
 
@@ -19,6 +19,7 @@ public class TextWriter {
         }
     }
 
+    // otrzymany text zapisuje do socketu
     public void write(String text) {
         writer.println(text);
     }
