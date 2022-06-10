@@ -1,4 +1,4 @@
-package org.jk.ex011_chat_v2.commons;
+package org.jk.project_chat_from_v2___20220610.commons;
 
 import lombok.extern.java.Log;
 
@@ -22,25 +22,32 @@ public class TextReader {
     }
 
     public TextReader(Socket socket, Consumer<String> textConsumer, Runnable onClose) {
+
         this.textConsumer = textConsumer;
         this.onClose = onClose;
+
         try {
+            // czytanie z socketu, strumien utworzony z socketu
             reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         } catch (IOException e) {
             log.severe("Creating input stream failed: " + e.getMessage());
         }
+
     }
 
     public void read() {
         String text;
         try {
             while ((text = reader.readLine()) != null) {
+                // publikowanie przez callback, przez consumenta
                 textConsumer.accept(text);
             }
         } catch (IOException exception) {
             log.severe("Read message failed: " + exception.getMessage());
         } finally {
             if (onClose != null) {
+
+                // wykonaj akcje po onClose po zakończeniu odczytu
                 onClose.run();
             }
         }
