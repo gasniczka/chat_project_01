@@ -7,8 +7,14 @@ import org.jk.project_chat_from_v2___20220610.commons.TransferObject;
 import org.jk.project_chat_from_v2___20220610.commons.TransferObjectReader;
 import org.jk.project_chat_from_v2___20220610.commons.TransferObjectWriter;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.stream.Collectors;
 
 import static org.jk.project_chat_from_v2___20220610.ServerEventType.GET_HISTORY;
 import static org.jk.project_chat_from_v2___20220610.ServerEventType.MESSAGE_RECEIVED;
@@ -19,12 +25,16 @@ import static org.jk.project_chat_from_v2___20220610.ServerEventType.SYSTEM_INFO
 @Log
 class Worker implements Runnable, Serializable {
 
+    private static final String SERVER_FILES_DIRECTORY = "/chatServerFiles/";
     private static final String COMMAND_LEADING_SIGN = "//";
     private static final String COMMAND_SEPARATOR_SIGN = " ";
+
+
     static final String GENERAL_ROOM_NAME = "general";
 
     static final String SERVER_INFO_CLIENT = "info";
     static final String SERVER_INFO_ROOM = "server";
+
 
     private final Socket socket;
     private final EventsBus eventsBus;
@@ -58,7 +68,7 @@ class Worker implements Runnable, Serializable {
 
         // worker obsługuje przychodzące informacje -> tu parsowanie treści i obsługę komend
 
-        if (text.startsWith(COMMAND_LEADING_SIGN)) {
+        if (StringUtils.isNotBlank(text) && text.startsWith(COMMAND_LEADING_SIGN)) {
 
             String[] commandArray = text.split(COMMAND_SEPARATOR_SIGN);
 
@@ -95,13 +105,70 @@ class Worker implements Runnable, Serializable {
                         transferObject,
                         this);
 
-                case VIEW_FILES -> log.info(" view files");
+                case VIEW_FILES -> sendInfo(
+                        eventsBus,
+                        TransferObject.builder()
+                                .clientId(SERVER_INFO_CLIENT)
+                                .chatRoom(SERVER_INFO_ROOM)
+                                .message("available files to download: " + getFilesToDownload())
+                                .build(),
+                        this);
 
-                case SEND_FILE -> log.info(commandArray[1] + " send file");
+//                case SEND_FILE -> log.info(commandArray[1] + " send file");
 
-                case DOWNLOAD_FILE -> log.info(commandArray[1] + " download file");
+                case DOWNLOAD_FILE -> {
+
+                    log.info(commandArray[1] + " download file");
+
+                    String fileName = commandArray[1];
+
+                    String message = "can not send file: " + fileName;
+
+                    File file = new File(SERVER_FILES_DIRECTORY + fileName);
+                    byte[] fileContent = null;
+
+                    if (!file.exists() || !file.isFile()) {
+                        log.warning("plik nie istnieje: " + file.getAbsolutePath());
+                        message = "can not send file, file does not exist: " + fileName;
+                    } else {
+
+                        try {
+                            fileContent = Files.readAllBytes(file.toPath());
+                            message = "sending requested file: " + fileName;
+                        } catch (IOException e) {
+                            message = "can not send file, error reading file: " + fileName;
+                            log.severe("could not read file: " + fileName + "error: " + e);
+                        }
+                    }
+
+                    sendInfo(
+                            eventsBus,
+                            TransferObject.builder()
+                                    .clientId(SERVER_INFO_CLIENT)
+                                    .chatRoom(SERVER_INFO_ROOM)
+                                    .message(message)
+                                    .file(file)
+                                    .fileContent(fileContent)
+                                    .build(),
+                            this
+                    );
+
+                }
 
                 default -> log.info(commandArray[0] + " no proper action specified");
+            }
+
+        } else if (transferObject.getFile() != null) {
+            // obsługa przyjecia pliku
+
+            File file = transferObject.getFile();
+            String fileName = SERVER_FILES_DIRECTORY + file.getName();
+
+            try {
+                Files.write(new File(fileName).toPath(), transferObject.getFileContent());
+            } catch (IOException e) {
+                log.severe("can not save file: " + fileName + " error: " + e);
+                // throw new RuntimeException("can not save file " + fileName, e);
             }
 
         } else {
@@ -110,6 +177,22 @@ class Worker implements Runnable, Serializable {
             sendMessage(eventsBus, transferObject, this);
         }
 
+    }
+
+    private String getFilesToDownload() {
+        String filesToDownload = "";
+
+        try {
+            filesToDownload = Files.list(Paths.get(SERVER_FILES_DIRECTORY))
+                    .filter(file -> !Files.isDirectory(file))
+                    .map(Path::getFileName)
+                    .map(Path::toString)
+                    .collect(Collectors.joining(", "));
+        } catch (IOException e) {
+            log.severe("error fetching file names to download " + e);
+            // throw new RuntimeException("error fetching file names", e);
+        }
+        return filesToDownload;
     }
 
 

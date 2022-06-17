@@ -2,16 +2,26 @@ package org.jk.project_chat_from_v2___20220610;
 
 import lombok.extern.java.Log;
 import org.apache.commons.lang3.StringUtils;
-import org.jk.project_chat_from_v2___20220610.commons.*;
+import org.jk.project_chat_from_v2___20220610.commons.Sockets;
+import org.jk.project_chat_from_v2___20220610.commons.TextReader;
+import org.jk.project_chat_from_v2___20220610.commons.TransferObject;
+import org.jk.project_chat_from_v2___20220610.commons.TransferObjectReader;
+import org.jk.project_chat_from_v2___20220610.commons.TransferObjectWriter;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.file.Files;
 import java.util.Random;
 
 
 @Log
 public class ChatClient {
+
+    private static final String CLIENT_FILES_DIRECTORY = "/chatClientFiles/";
+
+    private static final String COMMAND_SEPARATOR_SIGN = " ";
+
 
     private static final String HELP_MESSAGE = """
             USER HELP INFO\s
@@ -44,9 +54,18 @@ public class ChatClient {
                         String messagetoShow = String.format("%s@%s: %s ", transferObject.getClientId(), transferObject.getChatRoom(), transferObject.getMessage());
                         System.out.println(messagetoShow);
 
-                        File file = transferObject.getFile();
-                        if (file != null && !file.exists()) {
-                            // TODO save file
+                        if (transferObject.getFile() != null) {
+                            // obsługa przyjecia pliku
+
+                            File file = transferObject.getFile();
+                            String fileName = CLIENT_FILES_DIRECTORY + file.getName();
+
+                            try {
+                                Files.write(new File(fileName).toPath(), transferObject.getFileContent());
+                            } catch (IOException e) {
+                                System.out.println("error: can not save file " + fileName + "error: " + e);
+                            }
+
                         }
                     },
                     /*onClose*/
@@ -126,10 +145,39 @@ public class ChatClient {
         TransferObject transferObject;
 
         if (text.length() >= 4 && "//sf".equals(text.substring(0, 4))) {
-            System.out.println("przygotuj wysyłke pliku");
-            transferObject = TransferObject.builder().clientId(name).build();
+
+            String[] commandArray = text.split(COMMAND_SEPARATOR_SIGN);
+
+            if ((commandArray.length == 1) || (commandArray.length > 1 && StringUtils.isBlank(commandArray[1]))) {
+                System.out.println("filename is not specified");
+                return;
+            }
+
+            File file = new File(commandArray[1]);
+
+            if (!file.exists() || !file.isFile()) {
+                System.out.println("file does not exist: " + file.getAbsolutePath());
+                return;
+            }
+
+            byte[] fileContent;
+
+            try {
+                fileContent = Files.readAllBytes(file.toPath());
+                System.out.println("file has been sent: " + file.getName());
+
+            } catch (IOException e) {
+                throw new RuntimeException("could not read file", e);
+            }
+
+            transferObject = TransferObject.builder()
+                    .clientId(name)
+                    .file(file)
+                    .fileContent(fileContent)
+                    .build();
+
         } else {
-//            System.out.println("message lub akcja do wykonania na serverze: //vr, //sr, //vf, //df");
+            // System.out.println("message lub akcja do wykonania na serverze: //vr, //sr, //vf, //df");
             transferObject = TransferObject.builder().clientId(name).message(text).build();
         }
 

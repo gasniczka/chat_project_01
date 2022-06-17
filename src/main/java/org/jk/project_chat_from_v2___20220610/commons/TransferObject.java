@@ -19,5 +19,6 @@ public class TransferObject implements Serializable {
     String chatRoom;
     String message;
     File file;
+    byte[] fileContent;
 
 }

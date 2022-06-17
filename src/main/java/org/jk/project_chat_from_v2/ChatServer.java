@@ -7,9 +7,6 @@ import org.jk.project_chat_from_v2.commons.Sockets;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 import static java.util.concurrent.Executors.newFixedThreadPool;
@@ -25,9 +22,6 @@ public class ChatServer {
     private final ServerWorkers serverWorkers;
     private final EventsBus eventsBus;
     private final ExecutorService executorService;
-
-    private final List<ClientToken> connectionList = Collections.synchronizedList(new ArrayList<>());
-
 
     private void start(int port) throws IOException {
 
@@ -69,11 +63,11 @@ public class ChatServer {
         var eventsBus = new EventsBus();
 
         // tworzenie listenerów/konsumerów bazujących na event busie
-          // logowanie głownych operacji
+        // logowanie głownych operacji
         eventsBus.addConsumer(new ServerEventsLogger());
-          // logowanie historii wiadomości
+        // logowanie historii wiadomości
         eventsBus.addConsumer(new MessagesHistoryLogger());
-          // TODO zapisywanie historii do pliku
+        // zapisywanie historii do pliku
         eventsBus.addConsumer(new MessagesHistoryStore());
 
 
